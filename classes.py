@@ -1,6 +1,11 @@
 import wikipedia
 import random
 
+# Class to store information about a specific wikipedia page
+# Stored information -
+#       - Page name (hopefully topic)
+#       - Page object from wikipedia class
+#       - Dictionary of links (build from wikipedia class)
 
 class PageClass:
     def __init__(self,pageName):
@@ -18,34 +23,40 @@ class PageClass:
             newDct[dictKey] = None
         return newDct
 
+    # Check if topic is a link of current object
     def isLinked(self, linkStr):
         return linkStr in self.linkDict
 
-    def addLink(self, linkStr):
-        # Adds link place into dictionary
-        self.linkDict[linkStr] = None
-
+    # Returns random link
     def randLink(self):
         num = len(self.linkDict)
         return self.linkDict.keys()[random.randint(0,num-1)]
 
-    def buildLink(self, linkStr, fullDict):
-        # Builds Link object between 2 page objects
-        if self.linkDict[linkStr] == None:
-            self.linkDict[linkStr] = PathLink(self,linkStr, fullDict)
-
-    def setLink(self, linkStr, linkObj):
-        self.linkDict[linkStr] = linkObj
-
+    # Returns phermone value from linked object
     def linkPherValue(self, linkStr):
         if self.linkDict[linkStr] == None:
             return 0
         else:
             return self.linkDict[linkStr].phermones
 
+    # Adds empty link into dictionary
+    def addLink(self, linkStr):
+        self.linkDict[linkStr] = None
+
+    # Builds Link object between 2 page objects
+    def buildLink(self, linkStr, fullDict):
+        if self.linkDict[linkStr] == None:
+            self.linkDict[linkStr] = PathLink(self,linkStr, fullDict)
+
+    # Sets value in link dictionary to provided value
+    def setLink(self, linkStr, linkObj):
+        self.linkDict[linkStr] = linkObj
+
+    # Modify phermone value for specific link
     def changePherValue(self, linkStr, val, timeStep, reset):
         self.linkDict[linkStr].addPhermones(val, timeStep, reset)
 
+    # Return array of links sorted by phermone value
     def sortLinks(self):
         sortKeys = []
         valArr = []
@@ -87,6 +98,9 @@ class PathLink:
             newPage.setLink(self.startStr,self)
             fullDict[endString] = newPage
 
+    # Modifies phermone value of path.
+    # Will add the phermone value for current excursion, and degrade current
+    # links based on time since update
     def addPhermones(self, val, timeStep, reset):
         if reset != self.resetS:
             self.phermones = 0
@@ -94,6 +108,7 @@ class PathLink:
         self.phermoneUpdate(timeStep)
         self.phermones = self.phermones + val
 
+    # Degrades phermone value based on time since last update
     def phermoneUpdate(self, timeStep):
         diff = timeStep - self.lastUpdate
         evap = diff*self.evapRate
