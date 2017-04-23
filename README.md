@@ -1,5 +1,4 @@
 Dexter-Swarm
-Development
 =====
 
 ## Description
