@@ -1,4 +1,4 @@
-Dexter-Swarm
+Dexter-Swarm Development
 =====
 
 ## Description
