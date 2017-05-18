@@ -100,6 +100,8 @@ class PageClass:
 
         jsString = jsString + '}'
 
+        return jsString
+
 
 
 class PathLink:
