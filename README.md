@@ -11,3 +11,4 @@ Python 2.7.x
 
 ### Python Packages
   * Wikipedia
+  * PyMongo
