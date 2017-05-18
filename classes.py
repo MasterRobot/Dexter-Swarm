@@ -1,5 +1,6 @@
 import wikipedia
 import random
+import json
 
 # Class to store information about a specific wikipedia page
 # Stored information -
@@ -76,6 +77,29 @@ class PageClass:
             sortKeys.insert(counter, temp)
 
         return sortKeys[::-1]
+
+#    def pOut(self):
+#        print('Obj Name: ' + self.pageStr)
+#        print('Page Name: ' + self.pageStr)
+
+    # Creates JSON version of class (for mongoDB Database)
+    def jsonOut(self):
+        jsString = '{'
+        # Overview Info
+        jsString = jsString + '"name": "' + self.pageStr + '", '
+        jsString = jsString + '"page_id": "' + self.page.pageid + '", '
+
+        # Data from Wikipedia Page object
+        jsString = jsString + '"wikipedia": {'
+        jsString = jsString + '"revision": "' + self.page.revision_id + '", '
+        jsString = jsString + '"summary": "' + self.page.summary + '", '
+        jsString = jsString + '"rawLinks": ' + json.dumps(self.page.links) + ', '
+        jsString = jsString + '}, '
+
+        # Data from Link Dictionary
+
+        jsString = jsString + '}'
+
 
 
 class PathLink:
