@@ -49,6 +49,15 @@ class PageClass:
         if self.linkDict[linkStr] == None:
             self.linkDict[linkStr] = PathLink(self,linkStr, fullDict)
 
+    def buildLink(self, pageObj2Link):
+        linkStr = pageObj2Link.pageStr
+        if self.linkDict[linkStr] == None:
+            self.linkDict[linkStr] = PathLink(self,linkStr, fullDict)
+
+    # Returns Link Obj for given link str
+    def getLink(self, linkStr):
+        return = self.linkDict[linkStr]
+
     # Sets value in link dictionary to provided value
     def setLink(self, linkStr, linkObj):
         self.linkDict[linkStr] = linkObj
@@ -97,7 +106,11 @@ class PageClass:
         jsString = jsString + '}, '
 
         # Data from Link Dictionary
+        jsString = jsString + '"links": {'
 
+        jsString = jsString + '}'
+
+        # Close JSON
         jsString = jsString + '}'
 
         return jsString
@@ -123,6 +136,16 @@ class PathLink:
             newPage = PageClass(endString)
             newPage.setLink(self.startStr,self)
             fullDict[endString] = newPage
+
+    def __init__(self, startObj, endObj):
+        # Default Parameters
+        self.phermones = 0
+        self.startStr = startObj.pageStr
+        self.endStr = endObj.pageStr
+        self.lastUpdate = 0
+        self.resetS = 0
+        # Create Link
+        endObj.setLink(self.startStr,self)
 
     # Modifies phermone value of path.
     # Will add the phermone value for current excursion, and degrade current
@@ -152,6 +175,15 @@ class PathLink:
         jsString = jsString + '"link_id": "' + idStr + '", '
         jsString = jsString + '"links": ["' + self.startStr + '", "' + self.endString + '"],'
 
+        # Phermone Data
+        jsString = jsString + '"phermones": {'
+
+        jsString = jsString + '}'
+
+        # Close JSON
+        jsString = jsString + '}'
+
+        return jsString
 
 
 
