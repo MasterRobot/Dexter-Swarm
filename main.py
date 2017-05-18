@@ -1,6 +1,11 @@
 from classes import PageClass, PathLink, AntMem
+from pymongo import MongoClient
 import pickle
 import random
+
+client = MongoClient()
+linkDB = client.wikiLinks
+pageDB = client.wikiPages
 
 resetSeed = random.randint(0,50000)
 
