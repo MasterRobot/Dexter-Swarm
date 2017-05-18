@@ -143,6 +143,17 @@ class PathLink:
         if self.phermones < 0:
             self.phermones = 0
 
+    # JSON Generation (for link database)
+    def jsonOut(self):
+        jsString = '{'
+
+        # General information
+        idStr = (self.startStr + self.endString).replace(" ", "")
+        jsString = jsString + '"link_id": "' + idStr + '", '
+        jsString = jsString + '"links": ["' + self.startStr + '", "' + self.endString + '"],'
+
+
+
 
 class AntMem:
 
