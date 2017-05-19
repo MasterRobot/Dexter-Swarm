@@ -93,27 +93,30 @@ class PageClass:
 
     # Creates JSON version of class (for mongoDB Database)
     def jsonOut(self):
-        jsString = '{'
+        jsonDict = {}
+        # jsString = '{'
+
         # Overview Info
-        jsString = jsString + '"name": "' + self.pageStr + '", '
-        jsString = jsString + '"page_id": "' + self.page.pageid + '", '
+        jsonDict['name'] = self.pageStr
+        jsonDict['page_id'] = self.page.pageid
 
         # Data from Wikipedia Page object
-        jsString = jsString + '"wikipedia": {'
-        jsString = jsString + '"revision": "' + str(self.page.revision_id) + '", '
-        jsString = jsString + '"summary": "' + self.page.summary + '", '
-        jsString = jsString + '"rawLinks": ' + json.dumps(self.page.links) + ', '
-        jsString = jsString + '}, '
+        jsonWikiDict = {}
+        jsonWikiDict['revision'] = self.page.revision_id
+        jsonWikiDict['summary'] = self.page.summary
+        jsonWikiDict['rawLinks'] = self.page.links
+
+        jsonDict['wikipedia'] = jsonWikiDict
 
         # Data from Link Dictionary
-        jsString = jsString + '"links": {'
+        #jsString = jsString + '"links": {'
+        #jsString = jsString + '}'
+        jsonLinkDict = {}
 
-        jsString = jsString + '}'
+        jsonDict['links'] = jsonLinkDict
 
-        # Close JSON
-        jsString = jsString + '}'
 
-        return jsString
+        return json.dumps(jsonDict)
 
 
 
@@ -168,22 +171,19 @@ class PathLink:
 
     # JSON Generation (for link database)
     def jsonOut(self):
-        jsString = '{'
+        jsonDict = {}
 
         # General information
         idStr = (self.startStr + self.endStr).replace(" ", "")
-        jsString = jsString + '"link_id": "' + idStr + '", '
-        jsString = jsString + '"links": ["' + self.startStr + '", "' + self.endStr + '"],'
+        jsonDict['link_id'] = idStr
+        jsonDict['links'] = [self.startStr, self.endStr]
 
         # Phermone Data
-        jsString = jsString + '"phermones": {'
+        jsonPherDict = {}
 
-        jsString = jsString + '}'
+        jsonDict['phermones'] = jsonPherDict
 
-        # Close JSON
-        jsString = jsString + '}'
-
-        return jsString
+        return json.dumps(jsonDict)
 
 
 
