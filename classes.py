@@ -52,7 +52,7 @@ class PageClass:
     def buildLink(self, pageObj2Link):
         linkStr = pageObj2Link.pageStr
         if self.linkDict[linkStr] == None:
-            self.linkDict[linkStr] = PathLink(self,linkStr, fullDict)
+            self.linkDict[linkStr] = PathLink(self,pageObj2Link)
 
     # Returns Link Obj for given link str
     def getLink(self, linkStr):
