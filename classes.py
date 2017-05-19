@@ -56,7 +56,7 @@ class PageClass:
 
     # Returns Link Obj for given link str
     def getLink(self, linkStr):
-        return = self.linkDict[linkStr]
+        return self.linkDict[linkStr]
 
     # Sets value in link dictionary to provided value
     def setLink(self, linkStr, linkObj):
