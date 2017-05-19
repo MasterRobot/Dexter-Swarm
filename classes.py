@@ -116,7 +116,7 @@ class PageClass:
         jsonDict['links'] = jsonLinkDict
 
 
-        return json.dumps(jsonDict)
+        return jsonDict
 
 
 
@@ -183,7 +183,7 @@ class PathLink:
 
         jsonDict['phermones'] = jsonPherDict
 
-        return json.dumps(jsonDict)
+        return jsonDict
 
 
 
