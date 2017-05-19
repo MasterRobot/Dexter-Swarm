@@ -100,7 +100,7 @@ class PageClass:
 
         # Data from Wikipedia Page object
         jsString = jsString + '"wikipedia": {'
-        jsString = jsString + '"revision": "' + self.page.revision_id + '", '
+        jsString = jsString + '"revision": "' + str(self.page.revision_id) + '", '
         jsString = jsString + '"summary": "' + self.page.summary + '", '
         jsString = jsString + '"rawLinks": ' + json.dumps(self.page.links) + ', '
         jsString = jsString + '}, '
@@ -171,9 +171,9 @@ class PathLink:
         jsString = '{'
 
         # General information
-        idStr = (self.startStr + self.endString).replace(" ", "")
+        idStr = (self.startStr + self.endStr).replace(" ", "")
         jsString = jsString + '"link_id": "' + idStr + '", '
-        jsString = jsString + '"links": ["' + self.startStr + '", "' + self.endString + '"],'
+        jsString = jsString + '"links": ["' + self.startStr + '", "' + self.endStr + '"],'
 
         # Phermone Data
         jsString = jsString + '"phermones": {'

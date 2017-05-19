@@ -7,7 +7,7 @@ from pymongo import MongoClient
 # Name of DB is Dexter-Swarm
 # has collections "wikiLinks" and "wikiPages"
 client = MongoClient()
-db = client.dexter-swarm
+db = client.dexterSwarm
 
 # Create Objects
 pageA = PageClass("Waiakea")
