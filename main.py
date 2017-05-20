@@ -32,11 +32,12 @@ pkl_file.close()
 
 startPoint = "Malcolm Gladwell"
 endGoal = "Microsoft"
+max_steps = 30
 
 gershwin = AntMem(startPoint,endGoal)
 allPages[startPoint] = PageClass(startPoint)
 
-for k in range(0,30):
+for k in range(0,max_steps):
     gershwin.move(allPages,currentTime, resetSeed)
     print "Current = ", gershwin.current
     currentTime = currentTime + 1

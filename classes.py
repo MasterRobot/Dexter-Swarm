@@ -66,16 +66,23 @@ class PageClass:
     def changePherValue(self, linkStr, val, timeStep, reset):
         self.linkDict[linkStr].addPhermones(val, timeStep, reset)
 
-    # Return array of links sorted by phermone value
-    def sortLinks(self):
+    # Return array of links sorted by phermone value. Highest to Lowest Values
+    def sortLinks(self, curTime):
         sortKeys = []
         valArr = []
+
+        # Update Phermone Values before sorting
+        for testKeys, linkObj in self.linkDict.items():
+            if not(linkObj == None):
+                linkObj.phermoneUpdate(curTime)
+
         strKeys = self.linkDict.keys()
         keyNum = len(strKeys)-1
 
         valArr.append(self.linkPherValue(strKeys[keyNum]))
         sortKeys.append(strKeys.pop())
 
+        # Builds Array of Lowest to Highest Phermone Values
         for i in range(0, keyNum):
             counter = 0
             temp = strKeys.pop()
@@ -85,6 +92,7 @@ class PageClass:
             valArr.insert(counter, tempVal)
             sortKeys.insert(counter, temp)
 
+        # Returns REVERSED Array (Higest to Lowest Phermone Values)
         return sortKeys[::-1]
 
 #    def pOut(self):
@@ -194,8 +202,8 @@ class AntMem:
 
     fullChance = 10
     randChance = 1
-    firstPerc = 7
-    secPerc = 10
+    # firstPerc = 7 - replaced with difference
+    secPerc = 2
 
 
     def __init__(self, startStr, goalStr):
@@ -204,6 +212,7 @@ class AntMem:
         self.pherMoneDrop = self.phermoneStart
         self.backTrack = False
         self.path = [startStr]
+        self.contradiction = False
 
     def updateDrop(self):
         self.pherMoneDrop = self.pherMoneDrop - self.phermoneDisp
@@ -215,35 +224,57 @@ class AntMem:
             next = self.path.pop()
             if self.current == next:
                 next = self.path.pop()
-            pageList[self.current].changePherValue(next, self.pherMoneDrop, timeStep, reset)
+
+            # If in a contradiction (page referenced in path does not actually exist)
+            # a phermone update does not occur (the page does not actually have
+            # percieved phermone value). Contradiction flag is switched.
+            if self.contradiction:
+                self.contradiction = False
+            else:
+                pageList[self.current].changePherValue(next, self.pherMoneDrop, timeStep, reset)
+
             self.updateDrop()
             self.current = next
         else:
             if pageList[self.current].isLinked(self.goal):
                 nextStep = self.goal
+                self.backTrack = True
                 print "GOAL"
             else:
-                posLinks = pageList[self.current].sortLinks()
+                posLinks = pageList[self.current].sortLinks(timeStep)
                 testPher = pageList[self.current].linkPherValue(posLinks[0])
+                testPher2 = pageList[self.current].linkPherValue(posLinks[1])
                 ranInt = random.randint(0,self.fullChance-1)
                 nextStep = None
+
+                # If random is in random range or no phermones, choose a random link
+                # If random is in range of 2nd percent - go with 2nd best
+                # Else go with best phermone
                 if ranInt < self.randChance or testPher == 0:
                     randPlace = random.randint(0, len(posLinks)-1)
                     nextStep = posLinks[randPlace]
-                elif ranInt < self.firstPerc:
-                    nextStep = posLinks[0]
-                elif ranInt < self.secPerc:
+                elif ranInt < (self.randChance + self.secPerc) and not(testPher2 == 0):
                     nextStep = posLinks[1]
+                else:
+                    nextStep = posLinks[0]
 
+            errorCheck = False
+            # Create New Page for next step
+            # If page error, choose another random link as next step
             while True:
                 try:
                     pageList[self.current].buildLink(nextStep, pageList)
                     break
                 except wikipedia.exceptions.PageError:
                     print "CATCH"
+                    errorCheck = True
                     nextStep = pageList[self.current].randLink()
 
-            if nextStep == self.goal:
-                self.backTrack = True
+            # What happens if goal or element in path does not exist
+                # Contradiction - another page will be accessed in path instead,
+                # but maybe no phermones should be dropped there?
+            if self.backTrack and errorCheck:
+                 self.contradiction = True
+
             self.path.append(nextStep)
             self.current = nextStep
