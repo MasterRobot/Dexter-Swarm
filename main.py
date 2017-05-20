@@ -3,46 +3,45 @@ from pymongo import MongoClient
 import pickle
 import random
 
+# -------- DATABASE SETUP
 client = MongoClient()
 linkDB = client.wikiLinks
 pageDB = client.wikiPages
 
-resetSeed = random.randint(0,50000)
-
-allPages = {}
-currentTime = 0
-
-pkl_file = open('wikiData.pkl', 'rb')
-allPages = pickle.load(pkl_file)
-print allPages.keys()
-print len(allPages.keys())
-pkl_file.close()
-#------------------------------------------------------------
-#--------------- Link Test
-
-# allPages["Oceans"] = PageClass("Oceans")
-# allPages["Floating match on card"] = PageClass("Floating match on card")
-#
-# allPages["Oceans"].buildLink("Floating match on card", allPages)
-# print allPages.keys()
-# allPages["Oceans"].changePherValue("Floating match on card", 10)
-# print "ocean side =", allPages["Oceans"].linkPherValue("Floating match on card")
-# print "other side =", allPages["Floating match on card"].linkPherValue("Oceans")
-# print allPages.keys()
-
+# --------------PARAMETERS
 startPoint = "Malcolm Gladwell"
 endGoal = "Microsoft"
 max_steps = 30
+max_ants = 6
+concurrent = 2
+resetSeed = random.randint(0,50000)
 
-gershwin = AntMem(startPoint,endGoal)
+# --------------INITIALIZATION
+allPages = {}
+currentTime = 0
+totalAnts = 0
+
+ants = []
+for nAnt in range(0,concurrent):
+    ants.append(AntMem(startPoint,endGoal, max_steps))
+    totalAnts = totalAnts + 1
+
 allPages[startPoint] = PageClass(startPoint)
 
-for k in range(0,max_steps):
-    gershwin.move(allPages,currentTime, resetSeed)
-    print "Current = ", gershwin.current
+
+# ------------ RUNTIME
+
+while len(ants) > 0:
+
+    for antNum in range(0, len(ants)):
+        if ants[antNum].isDead():
+            ants[antNum].postMortem()
+            if totalAnts <= max_ants:
+                ants[antNum] = AntMem(startPoint,endGoal, max_steps)
+                totalAnts = totalAnts + 1
+            else:
+                ants.pop(antNum)
+        else:
+            ants[antNum].move(allPages,currentTime,resetSeed)
+
     currentTime = currentTime + 1
-    if gershwin.current == startPoint:
-        print "WIN"
-        break
-output = open('wikiData.pkl', 'wb')
-pickle.dump(allPages, output)

@@ -12,7 +12,7 @@ db = client.dexterSwarm
 # Create Objects
 pageA = PageClass("Waiakea")
 pageB = PageClass("Hilo Bay")
-pageA.buildLink(pageB)
+pageA.buildSimpleLink(pageB)
 linkAB = pageA.getLink("Hilo Bay")
 
 # Add Objects to DB

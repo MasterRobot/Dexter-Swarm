@@ -10,9 +10,26 @@ import json
 
 class PageClass:
     def __init__(self,pageName):
+        wikiName = pageName
+        try:
+            newPage = wikipedia.page(wikiName)
+        except wikipedia.exceptions.DisambiguationError as obj:
+            possibleOptions = obj.options
+            while True:
+                if len(possibleOptions) == 0:
+                    print "No Good Page Found"
+                    quit()
+                wikiName = possibleOptions.pop(0)
+                try:
+                    newPage = wikipedia.page(wikiName)
+                    break
+                except wikipedia.exceptions.DisambiguationError:
+                    newNum = 0
+
         self.pageStr = pageName
         self.page = wikipedia.page(pageName)
         self.linkDict = self.buildDict()
+        return pageName
 
     def buildDict(self):
         tempArr = self.page.links
@@ -49,7 +66,7 @@ class PageClass:
         if self.linkDict[linkStr] == None:
             self.linkDict[linkStr] = PathLink(self,linkStr, fullDict)
 
-    def buildLink(self, pageObj2Link):
+    def buildSimpleLink(self, pageObj2Link):
         linkStr = pageObj2Link.pageStr
         if self.linkDict[linkStr] == None:
             self.linkDict[linkStr] = PathLink(self,pageObj2Link)
@@ -148,15 +165,15 @@ class PathLink:
             newPage.setLink(self.startStr,self)
             fullDict[endString] = newPage
 
-    def __init__(self, startObj, endObj):
-        # Default Parameters
-        self.phermones = 0
-        self.startStr = startObj.pageStr
-        self.endStr = endObj.pageStr
-        self.lastUpdate = 0
-        self.resetS = 0
-        # Create Link
-        endObj.setLink(self.startStr,self)
+    # def __init__(self, startObj, endObj):
+    #     # Default Parameters
+    #     self.phermones = 0
+    #     self.startStr = startObj.pageStr
+    #     self.endStr = endObj.pageStr
+    #     self.lastUpdate = 0
+    #     self.resetS = 0
+    #     # Create Link
+    #     endObj.setLink(self.startStr,self)
 
     # Modifies phermone value of path.
     # Will add the phermone value for current excursion, and degrade current
@@ -206,40 +223,57 @@ class AntMem:
     secPerc = 2
 
 
-    def __init__(self, startStr, goalStr):
+    def __init__(self, startStr, goalStr, life):
         self.current = startStr
         self.goal = goalStr
         self.pherMoneDrop = self.phermoneStart
         self.backTrack = False
         self.path = [startStr]
+        self.pathCopy = []
         self.contradiction = False
+        self.remainingLife = life
+        self.dead = False
 
     def updateDrop(self):
         self.pherMoneDrop = self.pherMoneDrop - self.phermoneDisp
         if self.pherMoneDrop < 0:
             self.pherMoneDrop = 0
 
+    def isDead(self):
+        return self.dead
+
+    def postMortem(self):
+        if self.remainingLife < 0:
+            print "Died of Natural Causes"
+        else:
+            print self.PathCopy
+
     def move(self, pageList, timeStep, reset):
         if self.backTrack:
-            next = self.path.pop()
-            if self.current == next:
-                next = self.path.pop()
-
-            # If in a contradiction (page referenced in path does not actually exist)
-            # a phermone update does not occur (the page does not actually have
-            # percieved phermone value). Contradiction flag is switched.
-            if self.contradiction:
-                self.contradiction = False
+            if len(self.path) == 1:
+                self.dead = True
             else:
-                pageList[self.current].changePherValue(next, self.pherMoneDrop, timeStep, reset)
+                next = self.path.pop()
+                if self.current == next:
+                    next = self.path.pop()
 
-            self.updateDrop()
-            self.current = next
+                # If in a contradiction (page referenced in path does not actually exist)
+                # a phermone update does not occur (the page does not actually have
+                # percieved phermone value). Contradiction flag is switched.
+                if self.contradiction:
+                    self.contradiction = False
+                else:
+                    pageList[self.current].changePherValue(next, self.pherMoneDrop, timeStep, reset)
+
+                self.updateDrop()
+                self.current = next
         else:
             if pageList[self.current].isLinked(self.goal):
                 nextStep = self.goal
                 self.backTrack = True
-                print "GOAL"
+                self.pathCopy = list(self.path)
+                self.pathCopy.append(self.goal)
+
             else:
                 posLinks = pageList[self.current].sortLinks(timeStep)
                 testPher = pageList[self.current].linkPherValue(posLinks[0])
@@ -257,6 +291,10 @@ class AntMem:
                     nextStep = posLinks[1]
                 else:
                     nextStep = posLinks[0]
+
+                self.remainingLife = self.remainingLife - 1
+                if self.remainingLife < 0:
+                    self.dead = True
 
             errorCheck = False
             # Create New Page for next step
