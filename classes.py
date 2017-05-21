@@ -25,11 +25,12 @@ class PageClass:
                     break
                 except wikipedia.exceptions.DisambiguationError:
                     newNum = 0
-
-        self.pageStr = pageName
-        self.page = wikipedia.page(pageName)
+        self.pageStr = wikiName
+        self.page = newPage
         self.linkDict = self.buildDict()
-        return pageName
+
+    def getPageName(self):
+        return self.pageStr
 
     def buildDict(self):
         tempArr = self.page.links
@@ -64,12 +65,23 @@ class PageClass:
     # Builds Link object between 2 page objects
     def buildLink(self, linkStr, fullDict):
         if self.linkDict[linkStr] == None:
-            self.linkDict[linkStr] = PathLink(self,linkStr, fullDict)
+            #self.linkDict[linkStr] = PathLink(self,linkStr, fullDict)
+            newLink = PathLink(self, linkStr, fullDict)
+            checkStr = newLink.getEndStr()
+            if checkStr == linkStr:
+                self.linkDict[linkStr] = newLink
+                return linkStr
+            else:
+                self.linkDict[checkStr] = newLink
+                return checkStr
+        else:
+            return linkStr
 
-    def buildSimpleLink(self, pageObj2Link):
-        linkStr = pageObj2Link.pageStr
-        if self.linkDict[linkStr] == None:
-            self.linkDict[linkStr] = PathLink(self,pageObj2Link)
+
+    # def buildSimpleLink(self, pageObj2Link):
+    #     linkStr = pageObj2Link.pageStr
+    #     if self.linkDict[linkStr] == None:
+    #         self.linkDict[linkStr] = PathLink(self,pageObj2Link)
 
     # Returns Link Obj for given link str
     def getLink(self, linkStr):
@@ -162,8 +174,9 @@ class PathLink:
             fullDict[endString].setLink(self.startStr, self)
         else:
             newPage = PageClass(endString)
+            self.endStr = newPage.getPageName()
             newPage.setLink(self.startStr,self)
-            fullDict[endString] = newPage
+            fullDict[self.endStr] = newPage
 
     # def __init__(self, startObj, endObj):
     #     # Default Parameters
@@ -174,6 +187,12 @@ class PathLink:
     #     self.resetS = 0
     #     # Create Link
     #     endObj.setLink(self.startStr,self)
+
+    def getEndStr(self):
+        return self.endStr
+
+    def getPhermones(self):
+        return self.phermones
 
     # Modifies phermone value of path.
     # Will add the phermone value for current excursion, and degrade current
@@ -217,10 +236,10 @@ class AntMem:
     phermoneStart = 100
     phermoneDisp = 5
 
-    fullChance = 10
+    fullChance = 20
     randChance = 1
     # firstPerc = 7 - replaced with difference
-    secPerc = 2
+    secPerc = 3
 
 
     def __init__(self, startStr, goalStr, life):
@@ -242,15 +261,26 @@ class AntMem:
     def isDead(self):
         return self.dead
 
-    def postMortem(self):
+    def postMortem(self, allPages):
         if self.remainingLife < 0:
             print "Died of Natural Causes"
         else:
-            print self.PathCopy
+            print self.pathCopy
+
+            for n in range(0, len(self.pathCopy)-1):
+                startStr = self.pathCopy[n]
+                endStr = self.pathCopy[n+1]
+                linkObj = allPages[startStr].getLink(endStr)
+                linkPher = linkObj.getPhermones()
+                print startStr + " -> (" + str(linkPher) + ") -> " + endStr
+        print "-"
+        print "-"
+
+
 
     def move(self, pageList, timeStep, reset):
         if self.backTrack:
-            if len(self.path) == 1:
+            if len(self.path) == 0:
                 self.dead = True
             else:
                 next = self.path.pop()
@@ -301,10 +331,10 @@ class AntMem:
             # If page error, choose another random link as next step
             while True:
                 try:
-                    pageList[self.current].buildLink(nextStep, pageList)
+                    nextStep = pageList[self.current].buildLink(nextStep, pageList)
                     break
                 except wikipedia.exceptions.PageError:
-                    print "CATCH"
+                    print "PAGE ERROR CATCH"
                     errorCheck = True
                     nextStep = pageList[self.current].randLink()
 

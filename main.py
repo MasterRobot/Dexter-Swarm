@@ -11,8 +11,8 @@ pageDB = client.wikiPages
 # --------------PARAMETERS
 startPoint = "Malcolm Gladwell"
 endGoal = "Microsoft"
-max_steps = 30
-max_ants = 6
+max_steps = 20
+max_ants = 8
 concurrent = 2
 resetSeed = random.randint(0,50000)
 
@@ -24,7 +24,7 @@ totalAnts = 0
 ants = []
 for nAnt in range(0,concurrent):
     ants.append(AntMem(startPoint,endGoal, max_steps))
-    totalAnts = totalAnts + 1
+    totalAnts += 1
 
 allPages[startPoint] = PageClass(startPoint)
 
@@ -33,15 +33,21 @@ allPages[startPoint] = PageClass(startPoint)
 
 while len(ants) > 0:
 
-    for antNum in range(0, len(ants)):
+    aliveAnts = len(ants)
+    antNum = 0
+
+    while antNum < aliveAnts:
         if ants[antNum].isDead():
-            ants[antNum].postMortem()
+            ants[antNum].postMortem(allPages)
             if totalAnts <= max_ants:
                 ants[antNum] = AntMem(startPoint,endGoal, max_steps)
                 totalAnts = totalAnts + 1
             else:
                 ants.pop(antNum)
+                antNum -= 1
+                aliveAnts -= 1
         else:
             ants[antNum].move(allPages,currentTime,resetSeed)
+        antNum += 1
 
-    currentTime = currentTime + 1
+    currentTime += 1
