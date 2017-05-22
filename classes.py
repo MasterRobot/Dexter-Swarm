@@ -96,7 +96,7 @@ class PageClass:
         self.linkDict[linkStr].addPhermones(val, timeStep, reset)
 
     # Return array of links sorted by phermone value. Highest to Lowest Values
-    def sortLinks(self, curTime):
+    def sortLinks(self, curTime, lastStep):
         sortKeys = []
         valArr = []
 
@@ -115,11 +115,12 @@ class PageClass:
         for i in range(0, keyNum):
             counter = 0
             temp = strKeys.pop()
-            tempVal = self.linkPherValue(temp)
-            while counter < len(valArr) and tempVal > valArr[counter]:
-                counter = counter + 1
-            valArr.insert(counter, tempVal)
-            sortKeys.insert(counter, temp)
+            if temp != lastStep:
+                tempVal = self.linkPherValue(temp)
+                while counter < len(valArr) and tempVal > valArr[counter]:
+                    counter = counter + 1
+                valArr.insert(counter, tempVal)
+                sortKeys.insert(counter, temp)
 
         # Returns REVERSED Array (Higest to Lowest Phermone Values)
         return sortKeys[::-1]
@@ -305,7 +306,11 @@ class AntMem:
                 self.pathCopy.append(self.goal)
 
             else:
-                posLinks = pageList[self.current].sortLinks(timeStep)
+                if len(self.path) > 1:
+                    lastStep = self.path[-2]
+                else:
+                    lastStep = ""
+                posLinks = pageList[self.current].sortLinks(timeStep, lastStep)
                 testPher = pageList[self.current].linkPherValue(posLinks[0])
                 testPher2 = pageList[self.current].linkPherValue(posLinks[1])
                 ranInt = random.randint(0,self.fullChance-1)
