@@ -11,6 +11,11 @@ import json
 class PageClass:
     def __init__(self,pageName):
         wikiName = pageName
+
+        # Checks and attmpts to avoid disambiguation errors
+        # If the page results in a disambiguation page, each disambiguation
+        # option is tried (first to last) to see if actual pages exist
+        # goes with first avaliable page.
         try:
             newPage = wikipedia.page(wikiName)
         except wikipedia.exceptions.DisambiguationError as obj:
@@ -25,13 +30,17 @@ class PageClass:
                     break
                 except wikipedia.exceptions.DisambiguationError:
                     newNum = 0
+
+        # Updates page name to ensure saved name is the same as the page
         self.pageStr = wikiName
         self.page = newPage
         self.linkDict = self.buildDict()
 
+    # Returns name of page as String
     def getPageName(self):
         return self.pageStr
 
+    # Builds dictionary of None objects based on link names
     def buildDict(self):
         tempArr = self.page.links
         lens = len(tempArr)
@@ -64,10 +73,14 @@ class PageClass:
 
     # Builds Link object between 2 page objects
     def buildLink(self, linkStr, fullDict):
+
         if self.linkDict[linkStr] == None:
-            #self.linkDict[linkStr] = PathLink(self,linkStr, fullDict)
             newLink = PathLink(self, linkStr, fullDict)
             checkStr = newLink.getEndStr()
+
+            # Added to catch disambiguation issues.
+            # If page to link has different name than actual page,
+            # actual page name is subsituted and passed back
             if checkStr == linkStr:
                 self.linkDict[linkStr] = newLink
                 return linkStr
@@ -76,7 +89,6 @@ class PageClass:
                 return checkStr
         else:
             return linkStr
-
 
     # def buildSimpleLink(self, pageObj2Link):
     #     linkStr = pageObj2Link.pageStr
@@ -115,6 +127,9 @@ class PageClass:
         for i in range(0, keyNum):
             counter = 0
             temp = strKeys.pop()
+
+            # Checks to make sure each link is not the same as previous
+            # page visited.
             if temp != lastStep:
                 tempVal = self.linkPherValue(temp)
                 while counter < len(valArr) and tempVal > valArr[counter]:
@@ -124,10 +139,6 @@ class PageClass:
 
         # Returns REVERSED Array (Higest to Lowest Phermone Values)
         return sortKeys[::-1]
-
-#    def pOut(self):
-#        print('Obj Name: ' + self.pageStr)
-#        print('Page Name: ' + self.pageStr)
 
     # Creates JSON version of class (for mongoDB Database)
     def jsonOut(self):
@@ -147,12 +158,9 @@ class PageClass:
         jsonDict['wikipedia'] = jsonWikiDict
 
         # Data from Link Dictionary
-        #jsString = jsString + '"links": {'
-        #jsString = jsString + '}'
         jsonLinkDict = {}
 
         jsonDict['links'] = jsonLinkDict
-
 
         return jsonDict
 
@@ -254,14 +262,18 @@ class AntMem:
         self.remainingLife = life
         self.dead = False
 
+    # Changes ammount of phermone for ant to drop
     def updateDrop(self):
         self.pherMoneDrop = self.pherMoneDrop - self.phermoneDisp
         if self.pherMoneDrop < 0:
             self.pherMoneDrop = 0
 
+    # Checks if ant is dead
     def isDead(self):
         return self.dead
 
+    # Performs ant post mortem
+    # Prints path and phermone values if successful
     def postMortem(self, allPages):
         if self.remainingLife < 0:
             print "Died of Natural Causes"
@@ -278,7 +290,7 @@ class AntMem:
         print "-"
 
 
-
+    # Moves ant forward along path - main logic
     def move(self, pageList, timeStep, reset):
         if self.backTrack:
             if len(self.path) == 0:
