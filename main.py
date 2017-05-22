@@ -5,8 +5,7 @@ import random
 
 # -------- DATABASE SETUP
 client = MongoClient()
-linkDB = client.wikiLinks
-pageDB = client.wikiPages
+db = client.dexterSwarm
 
 # --------------PARAMETERS
 startPoint = "Malcolm Gladwell"
@@ -26,8 +25,12 @@ for nAnt in range(0,concurrent):
     ants.append(AntMem(startPoint,endGoal, max_steps))
     totalAnts += 1
 
-allPages[startPoint] = PageClass(startPoint)
-
+allPages[startPoint] = PageClass(startPoint, db)
+# .buildSuperPath finds if super path exists
+# if exisits, go along path and see if any routes are shorter
+# create shortest super path
+# douse path with phermones
+# do not worry about correct super path here. will be corrected later if faster
 
 # ------------ RUNTIME
 
@@ -38,7 +41,7 @@ while len(ants) > 0:
 
     while antNum < aliveAnts:
         if ants[antNum].isDead():
-            ants[antNum].postMortem(allPages)
+            ants[antNum].postMortem(allPages, db)
             if totalAnts <= max_ants:
                 ants[antNum] = AntMem(startPoint,endGoal, max_steps)
                 totalAnts = totalAnts + 1
@@ -47,7 +50,7 @@ while len(ants) > 0:
                 antNum -= 1
                 aliveAnts -= 1
         else:
-            ants[antNum].move(allPages,currentTime,resetSeed)
+            ants[antNum].move(allPages,currentTime,resetSeed, db)
         antNum += 1
 
     currentTime += 1

@@ -9,9 +9,45 @@ import json
 #       - Dictionary of links (build from wikipedia class)
 
 class PageClass:
-    def __init__(self,pageName):
+    def __init__(self,pageName, dataBase = None):
+        self.page_id = None
+        self.revision = None
+        self.summary = None
+        self.rawLinks = None
+
         wikiName = pageName
 
+        self.pageFetch(pageName, dataBase)
+        self.linkDict = self.buildDict()
+
+    def pageFetch(self, pageN, dataBase):
+        if dataBase != None:
+            self.dbFetch(pageN, dataBase)
+        if self.page_id == None:
+            self.onlineFetch(pageN, dataBase)
+
+    # Checks if page is in dictionary. If it is, builds page and name within
+    # page object. If doesnt exist, it keeps page as none
+    def dbFetch(self, pageN, dataBase):
+        testStr = pageN
+        cursor = dataBase.wikiPages.find({"name":testStr})
+        for doc in cursor:
+            if doc["name"] == testStr:
+                # Builds Page Objects
+                self.pageStr = testStr
+                self.page_id = doc["page_id"]
+                wikiOut = doc["wikipedia"]
+                self.revision = wikiOut["revision"]
+                self.summary = wikiOut["summary"]
+                self.rawLinks = wikiOut["rawLinks"]
+                #Builds SuperLinks
+
+                print testStr + " - DB Fetch"
+                break
+
+    # Fetches page from wikipedia
+    def onlineFetch(self, pageN, dataBase):
+        wikiName = pageN
         # Checks and attmpts to avoid disambiguation errors
         # If the page results in a disambiguation page, each disambiguation
         # option is tried (first to last) to see if actual pages exist
@@ -25,16 +61,27 @@ class PageClass:
                     print "No Good Page Found"
                     quit()
                 wikiName = possibleOptions.pop(0)
+                if dataBase != None:
+                    self.dbFetch(wikiName, dataBase)
+                    if self.page_id != None:
+                        break
                 try:
+
                     newPage = wikipedia.page(wikiName)
                     break
                 except wikipedia.exceptions.DisambiguationError:
                     newNum = 0
 
         # Updates page name to ensure saved name is the same as the page
-        self.pageStr = wikiName
-        self.page = newPage
-        self.linkDict = self.buildDict()
+        if self.page_id == None:
+            self.pageStr = wikiName
+            self.page_id = newPage.pageid
+            self.revision = newPage.revision_id
+            self.summary = newPage.summary
+            self.rawLinks = newPage.links
+            # Adds new page to DB if DB is passed
+            if dataBase != None:
+                resultOut = dataBase.wikiPages.insert_one(self.jsonOut())
 
     # Returns name of page as String
     def getPageName(self):
@@ -42,7 +89,7 @@ class PageClass:
 
     # Builds dictionary of None objects based on link names
     def buildDict(self):
-        tempArr = self.page.links
+        tempArr = self.rawLinks
         lens = len(tempArr)
         newDct = {}
 
@@ -72,10 +119,10 @@ class PageClass:
         self.linkDict[linkStr] = None
 
     # Builds Link object between 2 page objects
-    def buildLink(self, linkStr, fullDict):
+    def buildLink(self, linkStr, fullDict, dataBase):
 
         if self.linkDict[linkStr] == None:
-            newLink = PathLink(self, linkStr, fullDict)
+            newLink = PathLink(self, linkStr, fullDict, dataBase)
             checkStr = newLink.getEndStr()
 
             # Added to catch disambiguation issues.
@@ -147,13 +194,13 @@ class PageClass:
 
         # Overview Info
         jsonDict['name'] = self.pageStr
-        jsonDict['page_id'] = self.page.pageid
+        jsonDict['page_id'] = self.page_id
 
         # Data from Wikipedia Page object
         jsonWikiDict = {}
-        jsonWikiDict['revision'] = self.page.revision_id
-        jsonWikiDict['summary'] = self.page.summary
-        jsonWikiDict['rawLinks'] = self.page.links
+        jsonWikiDict['revision'] = self.revision
+        jsonWikiDict['summary'] = self.summary
+        jsonWikiDict['rawLinks'] = self.rawLinks
 
         jsonDict['wikipedia'] = jsonWikiDict
 
@@ -171,7 +218,7 @@ class PathLink:
     #global allPages
     evapRate = 2
 
-    def __init__(self, startObj, endString, fullDict):
+    def __init__(self, startObj, endString, fullDict, dataBase):
         # Default Parameters
         self.phermones = 0
         self.startStr = startObj.pageStr
@@ -182,7 +229,7 @@ class PathLink:
         if endString in fullDict:
             fullDict[endString].setLink(self.startStr, self)
         else:
-            newPage = PageClass(endString)
+            newPage = PageClass(endString, dataBase)
             self.endStr = newPage.getPageName()
             newPage.setLink(self.startStr,self)
             fullDict[self.endStr] = newPage
@@ -274,7 +321,7 @@ class AntMem:
 
     # Performs ant post mortem
     # Prints path and phermone values if successful
-    def postMortem(self, allPages):
+    def postMortem(self, allPages, dataBase = None):
         if self.remainingLife < 0:
             print "Died of Natural Causes"
         else:
@@ -286,12 +333,20 @@ class AntMem:
                 linkObj = allPages[startStr].getLink(endStr)
                 linkPher = linkObj.getPhermones()
                 print startStr + " -> (" + str(linkPher) + ") -> " + endStr
+
+            #Builds SuperLink
+            for linkTo in range(1, len(pathCopy)):
+                for linkFrom in range(linkTo+1, len(pathCopy)+1)
+                    # Create Superlink from pathCopy[-linkFrom] to pathCopy[-linkTo]
+                    # Checks if link exists, and if new link is faster
+                    # If faster update link (do not have to update page reference to link)
+                    # If does not exist, create new database link and link page to database link
         print "-"
         print "-"
 
 
     # Moves ant forward along path - main logic
-    def move(self, pageList, timeStep, reset):
+    def move(self, pageList, timeStep, reset, dataBase = None):
         if self.backTrack:
             if len(self.path) == 0:
                 self.dead = True
@@ -348,7 +403,7 @@ class AntMem:
             # If page error, choose another random link as next step
             while True:
                 try:
-                    nextStep = pageList[self.current].buildLink(nextStep, pageList)
+                    nextStep = pageList[self.current].buildLink(nextStep, pageList, dataBase)
                     break
                 except wikipedia.exceptions.PageError:
                     print "PAGE ERROR CATCH"
