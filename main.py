@@ -1,6 +1,5 @@
 from classes import PageClass, PathLink, AntMem
 from pymongo import MongoClient
-import pickle
 import random
 
 # -------- DATABASE SETUP
@@ -8,8 +7,10 @@ client = MongoClient()
 db = client.dexterSwarm
 
 # --------------PARAMETERS
-startPoint = "Malcolm Gladwell"
-endGoal = "Microsoft"
+#startPoint = "Malcolm Gladwell"
+#endGoal = "Microsoft"
+startPoint = "Raspberry Pi"
+endGoal = "Crate & Barrel"
 max_steps = 20
 max_ants = 8
 concurrent = 2
@@ -26,6 +27,7 @@ for nAnt in range(0,concurrent):
     totalAnts += 1
 
 allPages[startPoint] = PageClass(startPoint, db)
+allPages[startPoint].firstSetup(endGoal, currentTime, resetSeed, allPages, db)
 # .buildSuperPath finds if super path exists
 # if exisits, go along path and see if any routes are shorter
 # create shortest super path

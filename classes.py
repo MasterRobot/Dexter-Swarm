@@ -42,7 +42,6 @@ class PageClass:
                 self.rawLinks = wikiOut["rawLinks"]
                 #Builds SuperLinks
 
-                print testStr + " - DB Fetch"
                 break
 
     # Fetches page from wikipedia
@@ -211,6 +210,44 @@ class PageClass:
 
         return jsonDict
 
+    def firstSetup(self, endString, timeStep, reset, pageList, dataBase = None):
+        phermoneDropMax = 150
+        phermoneChange = 10
+
+        if dataBase == None:
+            return
+        docNew = dataBase.wikiLinks.find_one({"startLink":self.pageStr,"endLink":endString})
+        if docNew == None:
+            return
+
+        # Setup Arrays
+        checkPath = docNew["path"]
+        pherPath = []
+        # Prepare First Item
+        startLoc = checkPath.pop(0)
+        pherPath.append(startLoc)
+        # Loop to check for links
+        while len(checkPath) > 1:
+            searchLink = dataBase.wikiLinks.find_one({"startLink":checkPath[0],"endLink":endString})
+            if searchLink != None:
+                if searchLink["pathLength"] < len(checkPath):
+                    checkPath = searchLink["path"]
+            testStr = checkPath.pop(0)
+            pherPath.append(testStr)
+
+        endLoc = checkPath.pop(0)
+        pherPath.append(endLoc)
+        # Build First Link
+        self.buildLink(pherPath[1], pageList, dataBase)
+        # Build Rest of Links
+        for nextB in range(1, len(pherPath)-1):
+            pageList[pherPath[nextB]].buildLink(pherPath[nextB+1],pageList,dataBase)
+        # Drop Phermones
+        for backB in range(2, len(pherPath)+1):
+            pageList[pherPath[-backB]].changePherValue(pherPath[-backB+1], phermoneDropMax, timeStep, reset)
+            phermoneDropMax -= phermoneChange
+
+
 
 
 class PathLink:
@@ -334,13 +371,20 @@ class AntMem:
                 linkPher = linkObj.getPhermones()
                 print startStr + " -> (" + str(linkPher) + ") -> " + endStr
 
-            #Builds SuperLink
-            for linkTo in range(1, len(pathCopy)):
-                for linkFrom in range(linkTo+1, len(pathCopy)+1)
-                    # Create Superlink from pathCopy[-linkFrom] to pathCopy[-linkTo]
-                    # Checks if link exists, and if new link is faster
-                    # If faster update link (do not have to update page reference to link)
-                    # If does not exist, create new database link and link page to database link
+            if dataBase != None:
+                #Builds SuperLink
+                for linkTo in range(1, len(self.pathCopy)):
+                    for linkFrom in range(linkTo+1, len(self.pathCopy)+1):
+                        # Create Superlink from pathCopy[-linkFrom] to pathCopy[-linkTo]
+                        cStart = self.pathCopy[-linkFrom]
+                        cEnd = self.pathCopy[-linkTo]
+                        if linkTo == 1:
+                            pathPart = self.pathCopy[-linkFrom:]
+                        else:
+                            pathPart = self.pathCopy[-linkFrom:-linkTo+1]
+                        superLinkBuild(cStart, cEnd, pathPart, dataBase)
+
+
         print "-"
         print "-"
 
@@ -418,3 +462,29 @@ class AntMem:
 
             self.path.append(nextStep)
             self.current = nextStep
+
+
+def superLinkBuild(startStr, endStr, path, dataBase):
+    # Checks if link exists, and if new link is faster
+    # If faster update link (do not have to update page reference to link)
+    # If does not exist, create new database link and link page to database link
+    pathLen = len(path)
+    docNew = dataBase.wikiLinks.find_one({"startLink":startStr,"endLink":endStr})
+
+    if docNew == None:
+        newDict = {}
+        idStr = (startStr + endStr).replace(" ", "")
+        newDict['link_id'] = idStr
+        newDict['startLink'] = startStr
+        newDict['endLink'] = endStr
+        newDict['path'] = path
+        newDict['pathLength'] = pathLen
+        resultOut = dataBase.wikiLinks.insert_one(newDict)
+
+    else:
+
+        if pathLen < docNew['pathLength']:
+            idCheck = docNew['link_id']
+            result = dataBase.wikiLinks.update_one(
+                {"link_id":idCheck},
+                {"$set": {"pathLength":pathLen,"path":path}})
