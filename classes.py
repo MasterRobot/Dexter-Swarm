@@ -2,24 +2,96 @@ import wikipedia
 import random
 import json
 
-# Class to store information about a specific wikipedia page
-# Stored information -
-#       - Page name (hopefully topic)
-#       - Page object from wikipedia class
-#       - Dictionary of links (build from wikipedia class)
+# Classes for Dexter DOF Swarm
+    # AntColony - Colony of ants
+    # AntMem - ants
+    # PageClass - Pages
+    # PathLink - Links between Pages
+
+class AntColony:
+    def __init__(self, startS, endS, stepM = 20, antM = 8, conM = 2, dBase = None):
+        # Parameter Setup
+        self.startPoint = startS
+        self.endPoint = endS
+        self.max_steps = stepM
+        self.max_ants = antM-1
+        self.concurrent = conM
+        self.db = dBase
+        # Init
+        self.resetSeed = random.randint(0,50000)
+        self.allPages = {}
+        self.currentTime = 0
+        self.totalAnts = 0
+        self.ants = []
+        for nAnt in range(0, self.concurrent):
+            self.ants.append(AntMem(self.startPoint,self.endPoint, self.max_steps))
+            self.totalAnts += 1
+
+        self.allPages[self.startPoint] = PageClass(self.startPoint, self.db)
+        self.allPages[self.startPoint].firstSetup(self, self.endPoint, self.currentTime, self.resetSeed, self.db)
+
+
+    # Returns page from colony dictionary - If page does not exist, None is returned
+    def getPage(self, pgStr):
+        if pgStr in self.allPages:
+            return self.allPages[pgStr]
+        else:
+            return None
+
+    def checkPage(self, pgStr):
+        return pgStr in self.allPages
+
+    # Adds PageClass object to colony dictionary
+    def addPage(self, adPage):
+        pgStr = adPage.getPageName()
+        self.allPages[pgStr] = adPage
+
+    def run(self, steps = None):
+        # If steps = None, run until all ants are dead
+        # If steps given, run only number of time stps requested
+        if steps != None:
+            endTime = self.currentTime + steps
+        else:
+            endTime = self.currentTime
+
+        while len(self.ants) > 0 and (steps == None or self.currentTime < endTime):
+            # Current Information for this cycle (number of current ants + counter)
+            aliveAnts = len(self.ants)
+            antNum = 0
+            # One Timestep cycle through all alive ants. Accounts for ant removal/replacement due to death or success
+            while antNum < aliveAnts:
+                if self.ants[antNum].isDead():
+                    self.ants[antNum].postMortem(self, self.db)
+                    # Ant replacement (Colony has additional ants)
+                    if self.totalAnts <= self.max_ants:
+                        self.ants[antNum] = AntMem(self.startPoint, self.endPoint, self.max_steps)
+                        self.totalAnts = self.totalAnts + 1
+                    # Ant Removal (Colony has no more ants)
+                    else:
+                        self.ants.pop(antNum)
+                        antNum -= 1
+                        aliveAnts -= 1
+                else:
+                    self.ants[antNum].move(self, self.currentTime, self.resetSeed, self.db)
+                antNum += 1
+
+            self.currentTime += 1
+
 
 class PageClass:
-    def __init__(self,pageName, dataBase = None):
+    def __init__(self, pageName, dataBase):
+        # Parameter Setup
         self.page_id = None
         self.revision = None
         self.summary = None
         self.rawLinks = None
-
+        self.pageStr = None
+        # Init
         wikiName = pageName
-
         self.pageFetch(pageName, dataBase)
         self.linkDict = self.buildDict()
 
+    # Creates page from database or internet
     def pageFetch(self, pageN, dataBase):
         if dataBase != None:
             self.dbFetch(pageN, dataBase)
@@ -27,9 +99,11 @@ class PageClass:
             self.onlineFetch(pageN, dataBase)
 
     # Checks if page is in dictionary. If it is, builds page and name within
-    # page object. If doesnt exist, it keeps page as none
+    # page object. If doesnt exist, it keeps page_id as none
     def dbFetch(self, pageN, dataBase):
+        # Setup
         testStr = pageN
+        # Database Search
         cursor = dataBase.wikiPages.find({"name":testStr})
         for doc in cursor:
             if doc["name"] == testStr:
@@ -44,7 +118,7 @@ class PageClass:
 
                 break
 
-    # Fetches page from wikipedia
+    # Fetches page from Wikipedia API
     def onlineFetch(self, pageN, dataBase):
         wikiName = pageN
         # Checks and attmpts to avoid disambiguation errors
@@ -82,10 +156,6 @@ class PageClass:
             if dataBase != None:
                 resultOut = dataBase.wikiPages.insert_one(self.jsonOut())
 
-    # Returns name of page as String
-    def getPageName(self):
-        return self.pageStr
-
     # Builds dictionary of None objects based on link names
     def buildDict(self):
         tempArr = self.rawLinks
@@ -97,26 +167,56 @@ class PageClass:
             newDct[dictKey] = None
         return newDct
 
-    # Check if topic is a link of current object
-    def isLinked(self, linkStr):
-        return linkStr in self.linkDict
+    # Pre-populates path with phermones based on historical shortest path
+    # Intended only for first setup between start and end goal
+    def firstSetup(self, colony, endString, timeStep, reset, dataBase):
+        # Parameters
+        phermoneDropMaxSet = 150
+        phermoneChangeSet = 10
 
-    # Returns random link
-    def randLink(self):
-        num = len(self.linkDict)
-        return self.linkDict.keys()[random.randint(0,num-1)]
+        # Checks if database and historical path exist. If either do not, return
+        if dataBase == None:
+            return
+        docNew = dataBase.wikiLinks.find_one({"startLink":self.pageStr,"endLink":endString})
+        if docNew == None:
+            return
 
-    # Returns phermone value from linked object
-    def linkPherValue(self, linkStr):
-        if self.linkDict[linkStr] == None:
-            return 0
-        else:
-            return self.linkDict[linkStr].phermones
+        for key in docNew["path"]:
+            phermoneDropMax = phermoneDropMaxSet
+            phermoneChange = phermoneChangeSet
+            print "ARRAY of " + key
+            # Setup Arrays
+            checkPath = docNew["path"][key]
+            pherPath = []
+            # Prepare First Item
+            startLoc = checkPath.pop(0)
+            pherPath.append(startLoc)
+            # Loop to check for links
+            while len(checkPath) > 1:
+                searchLink = dataBase.wikiLinks.find_one({"startLink":checkPath[0],"endLink":endString})
+                if searchLink != None:
+                    if searchLink["pathLength"] < len(checkPath):
+                        checkPath = searchLink["path"]
+                testStr = checkPath.pop(0)
+                pherPath.append(testStr)
 
+            endLoc = checkPath.pop(0)
+            pherPath.append(endLoc)
+            # Build First Link
+            self.buildLink(pherPath[1], colony, dataBase)
+            # Build Rest of Links
+            for nextB in range(1, len(pherPath)-1):
+                buildPage = colony.getPage(pherPath[nextB])
+                buildPage.buildLink(pherPath[nextB+1],colony,dataBase)
+            # Drop Phermones
+            for backB in range(2, len(pherPath)+1):
+                changePage = colony.getPage(pherPath[-backB])
+                if changePage != None:
+                    changePage.changePherValue(pherPath[-backB+1], phermoneDropMax, timeStep, reset)
+                phermoneDropMax -= phermoneChange
 
     # Builds Link object between 2 page objects
     def buildLink(self, linkStr, colony, dataBase):
-
         if self.linkDict[linkStr] == None:
             newLink = PathLink(self, linkStr, colony, dataBase)
             checkStr = newLink.getEndStr()
@@ -133,22 +233,25 @@ class PageClass:
         else:
             return linkStr
 
-    # def buildSimpleLink(self, pageObj2Link):
-    #     linkStr = pageObj2Link.pageStr
-    #     if self.linkDict[linkStr] == None:
-    #         self.linkDict[linkStr] = PathLink(self,pageObj2Link)
+    # Returns name of page as String
+    def getPageName(self):
+        return self.pageStr
+
+    # Returns random link
+    def randLink(self):
+        num = len(self.linkDict)
+        return self.linkDict.keys()[random.randint(0,num-1)]
 
     # Returns Link Obj for given link str
     def getLink(self, linkStr):
         return self.linkDict[linkStr]
 
-    # Sets value in link dictionary to provided value
-    def setLink(self, linkStr, linkObj = None):
-        self.linkDict[linkStr] = linkObj
-
-    # Modify phermone value for specific link
-    def changePherValue(self, linkStr, val, timeStep, reset):
-        self.linkDict[linkStr].addPhermones(val, timeStep, reset)
+    # Returns phermone value from linked object
+    def linkPherValue(self, linkStr):
+        if self.linkDict[linkStr] == None:
+            return 0
+        else:
+            return self.linkDict[linkStr].phermones
 
     # Return array of links sorted by phermone value. Highest to Lowest Values
     def sortLinks(self, curTime, lastStep):
@@ -180,8 +283,40 @@ class PageClass:
                 valArr.insert(counter, tempVal)
                 sortKeys.insert(counter, temp)
 
+        # If the top values have the same phermone value, they will be randomly mixed
+        if len(valArr) > 1:
+            endCheck = valArr[-1]
+            print self.pageStr + " LENGTH"
+            print len(valArr)
+            penCheck = valArr[-2]
+            randMix = []
+            while endCheck == penCheck and endCheck != 0 and len(valArr) > 1:
+                randMix.append(sortKeys.pop())
+                valArr.pop()
+                endCheck = valArr[-1]
+                penCheck = valArr[-2]
+
+            if len(randMix) > 0:
+                randMix.append(sortKeys.pop())
+                valArr.pop()
+                random.shuffle(randMix)
+                sortKeys = sortKeys + randMix
+                print "MIX IT UP"
+
         # Returns REVERSED Array (Higest to Lowest Phermone Values)
         return sortKeys[::-1]
+
+    # Check if topic is a link of current object
+    def isLinked(self, linkStr):
+        return linkStr in self.linkDict
+
+    # Sets value in link dictionary to provided value
+    def setLink(self, linkStr, linkObj = None):
+        self.linkDict[linkStr] = linkObj
+
+    # Modify phermone value for specific link
+    def changePherValue(self, linkStr, val, timeStep, reset):
+        self.linkDict[linkStr].addPhermones(val, timeStep, reset)
 
     # Creates JSON version of class (for mongoDB Database)
     def jsonOut(self):
@@ -207,80 +342,30 @@ class PageClass:
 
         return jsonDict
 
-    def firstSetup(self, endString, timeStep, reset, pageList, dataBase = None):
-        phermoneDropMax = 150
-        phermoneChange = 10
-
-        if dataBase == None:
-            return
-        docNew = dataBase.wikiLinks.find_one({"startLink":self.pageStr,"endLink":endString})
-        if docNew == None:
-            return
-
-        # Setup Arrays
-        checkPath = docNew["path"]
-        pherPath = []
-        # Prepare First Item
-        startLoc = checkPath.pop(0)
-        pherPath.append(startLoc)
-        # Loop to check for links
-        while len(checkPath) > 1:
-            searchLink = dataBase.wikiLinks.find_one({"startLink":checkPath[0],"endLink":endString})
-            if searchLink != None:
-                if searchLink["pathLength"] < len(checkPath):
-                    checkPath = searchLink["path"]
-            testStr = checkPath.pop(0)
-            pherPath.append(testStr)
-
-        endLoc = checkPath.pop(0)
-        pherPath.append(endLoc)
-        # Build First Link
-        self.buildLink(pherPath[1], pageList, dataBase)
-        # Build Rest of Links
-        for nextB in range(1, len(pherPath)-1):
-            pageList[pherPath[nextB]].buildLink(pherPath[nextB+1],pageList,dataBase)
-        # Drop Phermones
-        for backB in range(2, len(pherPath)+1):
-            pageList[pherPath[-backB]].changePherValue(pherPath[-backB+1], phermoneDropMax, timeStep, reset)
-            phermoneDropMax -= phermoneChange
-
-
-
-
 class PathLink:
-
-    #global allPages
-    evapRate = 2
-
-    def __init__(self, startObj, endString, fullDict, dataBase):
+    def __init__(self, startObj, endString, colony, dataBase):
         # Default Parameters
         self.phermones = 0
         self.startStr = startObj.pageStr
         self.endStr = endString
         self.lastUpdate = 0
         self.resetS = 0
-        # Create Link
-        if endString in fullDict:
-            fullDict[endString].setLink(self.startStr, self)
+        self.evapRate = 2
+        # Create Links
+        endPage = colony.getPage(endString)
+        if endPage != None:
+            endPage.setLink(self.startStr, self)
         else:
             newPage = PageClass(endString, dataBase)
-            self.endStr = newPage.getPageName()
             newPage.setLink(self.startStr,self)
-            fullDict[self.endStr] = newPage
+            colony.addPage(newPage)
+            self.endStr = newPage.getPageName()
 
-    # def __init__(self, startObj, endObj):
-    #     # Default Parameters
-    #     self.phermones = 0
-    #     self.startStr = startObj.pageStr
-    #     self.endStr = endObj.pageStr
-    #     self.lastUpdate = 0
-    #     self.resetS = 0
-    #     # Create Link
-    #     endObj.setLink(self.startStr,self)
-
+    # Returns string name of end page
     def getEndStr(self):
         return self.endStr
 
+    # Returns phermones of link
     def getPhermones(self):
         return self.phermones
 
@@ -320,28 +405,31 @@ class PathLink:
         return jsonDict
 
 
-
 class AntMem:
-
+    # Phermone Drop Settings
     phermoneStart = 100
     phermoneDisp = 5
-
+    # Random Path Walk Settings
     fullChance = 20
     randChance = 1
-    # firstPerc = 7 - replaced with difference
     secPerc = 3
 
-
     def __init__(self, startStr, goalStr, life):
+        # Parameter Setup
         self.current = startStr
         self.goal = goalStr
+        self.remainingLife = life
+        # Initialization
         self.pherMoneDrop = self.phermoneStart
         self.backTrack = False
         self.path = [startStr]
         self.pathCopy = []
         self.contradiction = False
-        self.remainingLife = life
         self.dead = False
+
+    # Checks if ant is dead
+    def isDead(self):
+        return self.dead
 
     # Changes ammount of phermone for ant to drop
     def updateDrop(self):
@@ -349,45 +437,8 @@ class AntMem:
         if self.pherMoneDrop < 0:
             self.pherMoneDrop = 0
 
-    # Checks if ant is dead
-    def isDead(self):
-        return self.dead
-
-    # Performs ant post mortem
-    # Prints path and phermone values if successful
-    def postMortem(self, allPages, dataBase = None):
-        if self.remainingLife < 0:
-            print "Died of Natural Causes"
-        else:
-            print self.pathCopy
-
-            for n in range(0, len(self.pathCopy)-1):
-                startStr = self.pathCopy[n]
-                endStr = self.pathCopy[n+1]
-                linkObj = allPages[startStr].getLink(endStr)
-                linkPher = linkObj.getPhermones()
-                print startStr + " -> (" + str(linkPher) + ") -> " + endStr
-
-            if dataBase != None:
-                #Builds SuperLink
-                for linkTo in range(1, len(self.pathCopy)):
-                    for linkFrom in range(linkTo+1, len(self.pathCopy)+1):
-                        # Create Superlink from pathCopy[-linkFrom] to pathCopy[-linkTo]
-                        cStart = self.pathCopy[-linkFrom]
-                        cEnd = self.pathCopy[-linkTo]
-                        if linkTo == 1:
-                            pathPart = self.pathCopy[-linkFrom:]
-                        else:
-                            pathPart = self.pathCopy[-linkFrom:-linkTo+1]
-                        superLinkBuild(cStart, cEnd, pathPart, dataBase)
-
-
-        print "-"
-        print "-"
-
-
     # Moves ant forward along path - main logic
-    def move(self, pageList, timeStep, reset, dataBase = None):
+    def move(self, colony, timeStep, reset, dataBase = None):
         if self.backTrack:
             if len(self.path) == 0:
                 self.dead = True
@@ -402,12 +453,15 @@ class AntMem:
                 if self.contradiction:
                     self.contradiction = False
                 else:
-                    pageList[self.current].changePherValue(next, self.pherMoneDrop, timeStep, reset)
+                    pherPage = colony.getPage(self.current)
+                    if pherPage != None:
+                        pherPage.changePherValue(next, self.pherMoneDrop, timeStep, reset)
 
                 self.updateDrop()
                 self.current = next
         else:
-            if pageList[self.current].isLinked(self.goal):
+            pageC = colony.getPage(self.current)
+            if pageC.isLinked(self.goal):
                 nextStep = self.goal
                 self.backTrack = True
                 self.pathCopy = list(self.path)
@@ -418,9 +472,9 @@ class AntMem:
                     lastStep = self.path[-2]
                 else:
                     lastStep = ""
-                posLinks = pageList[self.current].sortLinks(timeStep, lastStep)
-                testPher = pageList[self.current].linkPherValue(posLinks[0])
-                testPher2 = pageList[self.current].linkPherValue(posLinks[1])
+                posLinks = pageC.sortLinks(timeStep, lastStep)
+                testPher = pageC.linkPherValue(posLinks[0])
+                testPher2 = pageC.linkPherValue(posLinks[1])
                 ranInt = random.randint(0,self.fullChance-1)
                 nextStep = None
 
@@ -443,13 +497,14 @@ class AntMem:
             # Create New Page for next step
             # If page error, choose another random link as next step
             while True:
+                currentP = colony.getPage(self.current)
                 try:
-                    nextStep = pageList[self.current].buildLink(nextStep, pageList, dataBase)
+                    nextStep = currentP.buildLink(nextStep, colony, dataBase)
                     break
                 except wikipedia.exceptions.PageError:
                     print "PAGE ERROR CATCH"
                     errorCheck = True
-                    nextStep = pageList[self.current].randLink()
+                    nextStep = currentP.randLink()
 
             # What happens if goal or element in path does not exist
                 # Contradiction - another page will be accessed in path instead,
@@ -461,27 +516,80 @@ class AntMem:
             self.current = nextStep
 
 
+    # Performs ant post mortem
+    # Prints path and phermone values if successful
+    def postMortem(self, colony, dataBase = None):
+        if self.remainingLife < 0:
+            print "Died of Natural Causes"
+        else:
+            print self.pathCopy
+
+            for n in range(0, len(self.pathCopy)-1):
+                startStr = self.pathCopy[n]
+                endStr = self.pathCopy[n+1]
+                pageCheck = colony.getPage(startStr)
+                linkObj = pageCheck.getLink(endStr)
+                linkPher = linkObj.getPhermones()
+                print startStr + " -> (" + str(linkPher) + ") -> " + endStr
+
+            if dataBase != None:
+                #Builds SuperLink
+                for linkTo in range(1, len(self.pathCopy)):
+                    for linkFrom in range(linkTo+1, len(self.pathCopy)+1):
+                        # Create Superlink from pathCopy[-linkFrom] to pathCopy[-linkTo]
+                        cStart = self.pathCopy[-linkFrom]
+                        cEnd = self.pathCopy[-linkTo]
+                        if linkTo == 1:
+                            pathPart = self.pathCopy[-linkFrom:]
+                        else:
+                            pathPart = self.pathCopy[-linkFrom:-linkTo+1]
+                        superLinkBuild(cStart, cEnd, pathPart, dataBase)
+        print "-"
+        print "-"
+
+
+#### ------------------ Non Class Methods
 def superLinkBuild(startStr, endStr, path, dataBase):
     # Checks if link exists, and if new link is faster
     # If faster update link (do not have to update page reference to link)
     # If does not exist, create new database link and link page to database link
     pathLen = len(path)
     docNew = dataBase.wikiLinks.find_one({"startLink":startStr,"endLink":endStr})
-
+    # If Link does not exist, new one is made
     if docNew == None:
         newDict = {}
         idStr = (startStr + endStr).replace(" ", "")
         newDict['link_id'] = idStr
         newDict['startLink'] = startStr
         newDict['endLink'] = endStr
-        newDict['path'] = path
+        pathDict = {}
+        pathDict['Path_0'] = path
+        newDict['path'] = pathDict
         newDict['pathLength'] = pathLen
         resultOut = dataBase.wikiLinks.insert_one(newDict)
 
     else:
-
+        # If new link is shorter, replace existing links
         if pathLen < docNew['pathLength']:
             idCheck = docNew['link_id']
+            pathDict = {}
+            pathDict['Path_0'] = path
             result = dataBase.wikiLinks.update_one(
                 {"link_id":idCheck},
-                {"$set": {"pathLength":pathLen,"path":path}})
+                {"$set": {"pathLength":pathLen,"path":pathDict}})
+        # If new link is the same length, add to path as another option
+        elif pathLen == docNew['pathLength']:
+            idCheck = docNew['link_id']
+            pathIn = False
+            counter = 1
+            for key in docNew['path']:
+                counter += 1
+                if docNew['path'][key] == path:
+                    pathIn = True
+            if not(pathIn):
+                pathDict = docNew['path']
+                nName = "Path_" + str(counter)
+                pathDict[nName] = path
+                result = dataBase.wikiLinks.update_one(
+                    {"link_id":idCheck},
+                    {"$set": {"pathLength":pathLen,"path":pathDict}})
