@@ -113,15 +113,12 @@ class PageClass:
         else:
             return self.linkDict[linkStr].phermones
 
-    # Adds empty link into dictionary
-    def addLink(self, linkStr):
-        self.linkDict[linkStr] = None
 
     # Builds Link object between 2 page objects
-    def buildLink(self, linkStr, fullDict, dataBase):
+    def buildLink(self, linkStr, colony, dataBase):
 
         if self.linkDict[linkStr] == None:
-            newLink = PathLink(self, linkStr, fullDict, dataBase)
+            newLink = PathLink(self, linkStr, colony, dataBase)
             checkStr = newLink.getEndStr()
 
             # Added to catch disambiguation issues.
@@ -146,7 +143,7 @@ class PageClass:
         return self.linkDict[linkStr]
 
     # Sets value in link dictionary to provided value
-    def setLink(self, linkStr, linkObj):
+    def setLink(self, linkStr, linkObj = None):
         self.linkDict[linkStr] = linkObj
 
     # Modify phermone value for specific link
