@@ -11,12 +11,13 @@ db = client.dexterSwarm
 #endGoal = "Microsoft"
 startPoint = "Jmol"
 endGoal = "Microsoft"
+csvFile = 'rawData.csv'
 max_steps = 20
 max_ants = 10
 concurrent = 1
 
 # --------------INITIALIZATION
-newColony = AntColony(startPoint, endGoal, max_steps, max_ants, concurrent, db)
+newColony = AntColony(startPoint, endGoal, max_steps, max_ants, concurrent, db, csvFile)
 
 # --------------RUN
 newColony.run()

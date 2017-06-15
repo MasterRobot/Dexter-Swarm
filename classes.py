@@ -1,6 +1,8 @@
 import wikipedia
 import random
 import json
+import csv
+from datetime import datetime
 
 # Classes for Dexter DOF Swarm
     # AntColony - Colony of ants
@@ -9,7 +11,7 @@ import json
     # PathLink - Links between Pages
 
 class AntColony:
-    def __init__(self, startS, endS, stepM = 20, antM = 8, conM = 2, dBase = None):
+    def __init__(self, startS, endS, stepM = 20, antM = 8, conM = 2, dBase = None, csvFile = None):
         # Parameter Setup
         self.startPoint = startS
         self.endPoint = endS
@@ -17,6 +19,16 @@ class AntColony:
         self.max_ants = antM-1
         self.concurrent = conM
         self.db = dBase
+        self.cFile = csvFile
+        #Phermone/Random Parameter Setup
+        self.setupMaxDrop = 150
+        self.setupChangeDrop = 10
+        self.antMaxDrop = 100
+        self.antChangeDrop = 5
+        self.antFullChance = 20
+        self.antRandChance = 1
+        self.antTwoChance = 3
+        self.timeEvapRate = 2
         # Init
         self.resetSeed = random.randint(0,50000)
         self.allPages = {}
@@ -24,7 +36,7 @@ class AntColony:
         self.totalAnts = 0
         self.ants = []
         for nAnt in range(0, self.concurrent):
-            self.ants.append(AntMem(self.startPoint,self.endPoint, self.max_steps))
+            self.ants.append(AntMem(self.startPoint,self.endPoint, self.max_steps, self.getAntSetupSettings()))
             self.totalAnts += 1
 
         self.allPages[self.startPoint] = PageClass(self.startPoint, self.db)
@@ -37,6 +49,15 @@ class AntColony:
             return self.allPages[pgStr]
         else:
             return None
+
+    def getSetupPherSettings(self):
+        return [self.setupMaxDrop, self.setupChangeDrop]
+
+    def getAntSetupSettings(self):
+        return [self.antMaxDrop, self.antChangeDrop, self.antFullChance, self.antRandChance, self.antTwoChance]
+
+    def getEvapRate(self):
+        return self.timeEvapRate
 
     def checkPage(self, pgStr):
         return pgStr in self.allPages
@@ -61,10 +82,10 @@ class AntColony:
             # One Timestep cycle through all alive ants. Accounts for ant removal/replacement due to death or success
             while antNum < aliveAnts:
                 if self.ants[antNum].isDead():
-                    self.ants[antNum].postMortem(self, self.db)
+                    self.ants[antNum].postMortem(self, self.db, self.cFile)
                     # Ant replacement (Colony has additional ants)
                     if self.totalAnts <= self.max_ants:
-                        self.ants[antNum] = AntMem(self.startPoint, self.endPoint, self.max_steps)
+                        self.ants[antNum] = AntMem(self.startPoint, self.endPoint, self.max_steps, self.getAntSetupSettings())
                         self.totalAnts = self.totalAnts + 1
                     # Ant Removal (Colony has no more ants)
                     else:
@@ -171,8 +192,9 @@ class PageClass:
     # Intended only for first setup between start and end goal
     def firstSetup(self, colony, endString, timeStep, reset, dataBase):
         # Parameters
-        phermoneDropMaxSet = 150
-        phermoneChangeSet = 10
+        pherSet = colony.getSetupPherSettings()
+        phermoneDropMaxSet = pherSet[0]
+        phermoneChangeSet = pherSet[1]
 
         # Checks if database and historical path exist. If either do not, return
         if dataBase == None:
@@ -350,7 +372,7 @@ class PathLink:
         self.endStr = endString
         self.lastUpdate = 0
         self.resetS = 0
-        self.evapRate = 2
+        self.evapRate = colony.getEvapRate()
         # Create Links
         endPage = colony.getPage(endString)
         if endPage != None:
@@ -406,19 +428,19 @@ class PathLink:
 
 
 class AntMem:
-    # Phermone Drop Settings
-    phermoneStart = 100
-    phermoneDisp = 5
-    # Random Path Walk Settings
-    fullChance = 20
-    randChance = 1
-    secPerc = 3
 
-    def __init__(self, startStr, goalStr, life):
+    def __init__(self, startStr, goalStr, life, setArr):
         # Parameter Setup
         self.current = startStr
         self.goal = goalStr
         self.remainingLife = life
+        # Phermone Drop Settings
+        self.phermoneStart = setArr[0]
+        self.phermoneDisp = setArr[1]
+        # Random Path Walk Settings
+        self.fullChance = setArr[2]
+        self.randChance = setArr[3]
+        self.secPerc = setArr[4]
         # Initialization
         self.pherMoneDrop = self.phermoneStart
         self.backTrack = False
@@ -518,13 +540,14 @@ class AntMem:
 
     # Performs ant post mortem
     # Prints path and phermone values if successful
-    def postMortem(self, colony, dataBase = None):
+    def postMortem(self, colony, dataBase = None, csvFile = None):
+        pathL = 0
         if self.remainingLife < 0:
             print "Died of Natural Causes"
         else:
             print self.pathCopy
-
-            for n in range(0, len(self.pathCopy)-1):
+            pathL = len(self.pathCopy)
+            for n in range(0, pathL-1):
                 startStr = self.pathCopy[n]
                 endStr = self.pathCopy[n+1]
                 pageCheck = colony.getPage(startStr)
@@ -544,6 +567,15 @@ class AntMem:
                         else:
                             pathPart = self.pathCopy[-linkFrom:-linkTo+1]
                         superLinkBuild(cStart, cEnd, pathPart, dataBase)
+        # Saves data about ant to CSV file
+        if csvFile != None:
+            dateA = [str(datetime.now())]
+            pathSuc = [pathL]
+            rowOut = dateA + colony.getSetupPherSettings() + [colony.getEvapRate()] + colony.getAntSetupSettings() + pathSuc
+            with open(csvFile, 'ab') as f:
+                writer = csv.writer(f)
+                writer.writerow(rowOut)
+
         print "-"
         print "-"
 
