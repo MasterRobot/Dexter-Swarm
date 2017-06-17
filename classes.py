@@ -26,9 +26,10 @@ class AntColony:
         self.antMaxDrop = 100
         self.antChangeDrop = 5
         self.antFullChance = 20
-        self.antRandChance = 1
+        self.antRandChance = 2
         self.antTwoChance = 3
         self.timeEvapRate = 2
+        self.histOptions = 0
         # Init
         self.resetSeed = random.randint(0,50000)
         self.allPages = {}
@@ -59,8 +60,17 @@ class AntColony:
     def getEvapRate(self):
         return self.timeEvapRate
 
+    def getColonySize(self):
+        return self.max_ants
+
+    def getPathHist(self):
+        return self.histOptions
+
     def checkPage(self, pgStr):
         return pgStr in self.allPages
+
+    def setPathHist(self, histOpt):
+        self.histOptions = histOpt
 
     # Adds PageClass object to colony dictionary
     def addPage(self, adPage):
@@ -203,10 +213,12 @@ class PageClass:
         if docNew == None:
             return
 
+        pathCount = 0
+
         for key in docNew["path"]:
+            pathCount += 1
             phermoneDropMax = phermoneDropMaxSet
             phermoneChange = phermoneChangeSet
-            print "ARRAY of " + key
             # Setup Arrays
             checkPath = docNew["path"][key]
             pherPath = []
@@ -236,6 +248,8 @@ class PageClass:
                 if changePage != None:
                     changePage.changePherValue(pherPath[-backB+1], phermoneDropMax, timeStep, reset)
                 phermoneDropMax -= phermoneChange
+
+        colony.setPathHist(pathCount)
 
     # Builds Link object between 2 page objects
     def buildLink(self, linkStr, colony, dataBase):
@@ -308,8 +322,6 @@ class PageClass:
         # If the top values have the same phermone value, they will be randomly mixed
         if len(valArr) > 1:
             endCheck = valArr[-1]
-            print self.pageStr + " LENGTH"
-            print len(valArr)
             penCheck = valArr[-2]
             randMix = []
             while endCheck == penCheck and endCheck != 0 and len(valArr) > 1:
@@ -323,7 +335,6 @@ class PageClass:
                 valArr.pop()
                 random.shuffle(randMix)
                 sortKeys = sortKeys + randMix
-                print "MIX IT UP"
 
         # Returns REVERSED Array (Higest to Lowest Phermone Values)
         return sortKeys[::-1]
@@ -495,19 +506,22 @@ class AntMem:
                 else:
                     lastStep = ""
                 posLinks = pageC.sortLinks(timeStep, lastStep)
-                testPher = pageC.linkPherValue(posLinks[0])
-                testPher2 = pageC.linkPherValue(posLinks[1])
-                ranInt = random.randint(0,self.fullChance-1)
-                nextStep = None
+                if len(posLinks) > 1:
+                    testPher = pageC.linkPherValue(posLinks[0])
+                    testPher2 = pageC.linkPherValue(posLinks[1])
+                    ranInt = random.randint(0,self.fullChance-1)
+                    nextStep = None
 
-                # If random is in random range or no phermones, choose a random link
-                # If random is in range of 2nd percent - go with 2nd best
-                # Else go with best phermone
-                if ranInt < self.randChance or testPher == 0:
-                    randPlace = random.randint(0, len(posLinks)-1)
-                    nextStep = posLinks[randPlace]
-                elif ranInt < (self.randChance + self.secPerc) and not(testPher2 == 0):
-                    nextStep = posLinks[1]
+                    # If random is in random range or no phermones, choose a random link
+                    # If random is in range of 2nd percent - go with 2nd best
+                    # Else go with best phermone
+                    if ranInt < self.randChance or testPher == 0:
+                        randPlace = random.randint(0, len(posLinks)-1)
+                        nextStep = posLinks[randPlace]
+                    elif ranInt < (self.randChance + self.secPerc) and not(testPher2 == 0):
+                        nextStep = posLinks[1]
+                    else:
+                        nextStep = posLinks[0]
                 else:
                     nextStep = posLinks[0]
 
@@ -571,7 +585,7 @@ class AntMem:
         if csvFile != None:
             dateA = [str(datetime.now())]
             pathSuc = [pathL]
-            rowOut = dateA + colony.getSetupPherSettings() + [colony.getEvapRate()] + colony.getAntSetupSettings() + pathSuc
+            rowOut = dateA + [colony.getColonySize()] + colony.getSetupPherSettings() + [colony.getEvapRate()] + colony.getAntSetupSettings() + [colony.getPathHist()] + pathSuc
             with open(csvFile, 'ab') as f:
                 writer = csv.writer(f)
                 writer.writerow(rowOut)
