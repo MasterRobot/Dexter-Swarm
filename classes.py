@@ -27,7 +27,7 @@ class AntColony:
         self.antChangeDrop = 5
         self.antFullChance = 20
         self.antRandChance = 2
-        self.antTwoChance = 3
+        self.antTwoChance = 4
         self.timeEvapRate = 2
         self.histOptions = 0
         # Init

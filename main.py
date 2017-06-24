@@ -23,8 +23,13 @@ concurrent = 1
 #newColony.run()
 
 # -------------- CREATE AND RUN MULTIPLE
-moreCol = 100
+moreCol = 25
+# 4000 more ants for these Settings (run until 20,000 ants)
+
 
 for colC in range(0, moreCol):
     newNewCol = AntColony(startPoint, endGoal, max_steps, max_ants, concurrent, db, csvFile)
     newNewCol.run()
+    print '------------------------------'
+    print str(colC+1) + '/' + str(moreCol)
+    print '------------------------------'
