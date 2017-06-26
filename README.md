@@ -1,5 +1,4 @@
 Dexter-Swarm
-=====
 
 ## Description
 Dexter-Swarm is a Wikipedia degree of seperation program. It explores the shortest path of links between two wikipedia pages using Ant-Colony optimization. If a MongoDB database is provided, Dexter-Swarm will save page information and shortest links between pages for future exploration. If the program is run for extended periods of time, the ants will gradually discover the fastest path and save link informtation for other fast path connections. With optimized settings and plenty of time, this program could be used to develop connections between topics, people, and objects.
@@ -14,3 +13,6 @@ Python 2.7.x
 ### Python Packages
   * Wikipedia
   * PyMongo
+
+#### Additional Information
+[Website](http://theexcitedrobot.com/dexter-swarm/)
