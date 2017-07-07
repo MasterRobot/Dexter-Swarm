@@ -20,21 +20,26 @@ class AntColony:
         self.concurrent = conM
         self.db = dBase
         self.cFile = csvFile
-        #Phermone/Random Parameter Setup
-        self.setupMaxDrop = 150
-        self.setupChangeDrop = 10
-        self.antMaxDrop = 100
-        self.antChangeDrop = 5
+        # ----------------------------------------------------------------------
+        # AntColony Optimization Values
+        self.setupMaxDrop = 3500
+        self.setupChangeDrop = 500
+        self.antMaxDrop = 32768
         self.antFullChance = 20
         self.antRandChance = 2
-        self.antTwoChance = 4
-        self.timeEvapRate = 2
-        self.histOptions = 0
+        self.antTwoChance = 2
+        # Special Parameter Setup
+        # If the parameters below are (< 0) They will be subtracted from previous values
+        # If the parameters below are (< 0) They will be multiplied by the previous values
+        self.timeEvapRate = 0.75
+        self.antChangeDrop = 0.5
+        # ----------------------------------------------------------------------
         # Init
         self.resetSeed = random.randint(0,50000)
         self.allPages = {}
         self.currentTime = 0
         self.totalAnts = 0
+        self.histOptions = 0
         self.ants = []
         for nAnt in range(0, self.concurrent):
             self.ants.append(AntMem(self.startPoint,self.endPoint, self.max_steps, self.getAntSetupSettings()))
@@ -248,6 +253,8 @@ class PageClass:
                 if changePage != None:
                     changePage.changePherValue(pherPath[-backB+1], phermoneDropMax, timeStep, reset)
                 phermoneDropMax -= phermoneChange
+                if phermoneDropMax < 0:
+                    phermoneDropMax = 0
 
         colony.setPathHist(pathCount)
 
@@ -415,8 +422,12 @@ class PathLink:
     # Degrades phermone value based on time since last update
     def phermoneUpdate(self, timeStep):
         diff = timeStep - self.lastUpdate
-        evap = diff*self.evapRate
-        self.phermones = self.phermones - evap
+        if self.evapRate >= 1:
+            evap = diff*self.evapRate
+            self.phermones = self.phermones - evap
+        else:
+            evap = pow(self.evapRate, diff)
+            self.phermones = int(self.phermones*evap)
         self.lastUpdate = timeStep
         if self.phermones < 0:
             self.phermones = 0
@@ -465,8 +476,12 @@ class AntMem:
         return self.dead
 
     # Changes ammount of phermone for ant to drop
+    # Currently testing halfing drop every time
     def updateDrop(self):
-        self.pherMoneDrop = self.pherMoneDrop - self.phermoneDisp
+        if self.phermoneDisp >= 1:
+            self.pherMoneDrop = self.pherMoneDrop - self.phermoneDisp
+        else:
+            self.pherMoneDrop = int(self.pherMoneDrop*self.phermoneDisp)
         if self.pherMoneDrop < 0:
             self.pherMoneDrop = 0
 
