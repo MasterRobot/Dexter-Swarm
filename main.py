@@ -27,7 +27,7 @@ moreCol = 1
 
 
 # CSV Cols
-# [Ants in Colony, Setup Max Phermone Drop, Setup Phermone Change, Phermone Evap Rate, Ant Max Phermone Drop, Ant Phermone Change, Random Full Chance, Random Chance, Random Two Chance, Number of Current Historical Options, Resulting Path Length]
+# [Ants in Colony, Ant Life, Setup Max Phermone Drop, Setup Phermone Change, Phermone Evap Rate, Ant Max Phermone Drop, Ant Phermone Change, Random Full Chance, Random Chance, Random Two Chance, Number of Current Historical Options, Resulting Path Length]
 
 
 for colC in range(0, moreCol):

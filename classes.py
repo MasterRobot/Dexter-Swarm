@@ -25,11 +25,11 @@ class AntColony:
         self.setupMaxDrop = 3500
         self.setupChangeDrop = 500
         self.antMaxDrop = 32768
-        self.antFullChance = 20
-        self.antRandChance = 2
-        self.antTwoChance = 2
+        self.antFullChance = 40
+        self.antRandChance = 3
+        self.antTwoChance = 4
         # Special Parameter Setup
-        # If the parameters below are (< 0) They will be subtracted from previous values
+        # If the parameters below are (> 0) They will be subtracted from previous values
         # If the parameters below are (< 0) They will be multiplied by the previous values
         self.timeEvapRate = 0.75
         self.antChangeDrop = 0.5
@@ -67,6 +67,9 @@ class AntColony:
 
     def getColonySize(self):
         return self.max_ants
+
+    def getAntLife(self):
+        return self.max_steps
 
     def getPathHist(self):
         return self.histOptions
@@ -600,7 +603,7 @@ class AntMem:
         if csvFile != None:
             dateA = [str(datetime.now())]
             pathSuc = [pathL]
-            rowOut = dateA + [colony.getColonySize()] + colony.getSetupPherSettings() + [colony.getEvapRate()] + colony.getAntSetupSettings() + [colony.getPathHist()] + pathSuc
+            rowOut = dateA + [colony.getColonySize(), colony.getAntLife()] + colony.getSetupPherSettings() + [colony.getEvapRate()] + colony.getAntSetupSettings() + [colony.getPathHist()] + pathSuc
             with open(csvFile, 'ab') as f:
                 writer = csv.writer(f)
                 writer.writerow(rowOut)
