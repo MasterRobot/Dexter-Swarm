@@ -12,9 +12,9 @@ db = client.dexterSwarm
 startPoint = "Malcolm Gladwell"
 endGoal = "Microsoft"
 csvFile = 'rawData.csv'
-max_steps = 20
-max_ants = 10
-concurrent = 1
+max_steps = 14
+max_ants = 500
+concurrent = 4
 
 # --------------INITIALIZATION
 #newColony = AntColony(startPoint, endGoal, max_steps, max_ants, concurrent, db, csvFile)
@@ -23,8 +23,11 @@ concurrent = 1
 #newColony.run()
 
 # -------------- CREATE AND RUN MULTIPLE
-moreCol = 25
-# 4000 more ants for these Settings (run until 20,000 ants)
+moreCol = 1
+
+
+# CSV Cols
+# [Ants in Colony, Setup Max Phermone Drop, Setup Phermone Change, Phermone Evap Rate, Ant Max Phermone Drop, Ant Phermone Change, Random Full Chance, Random Chance, Random Two Chance, Number of Current Historical Options, Resulting Path Length]
 
 
 for colC in range(0, moreCol):
